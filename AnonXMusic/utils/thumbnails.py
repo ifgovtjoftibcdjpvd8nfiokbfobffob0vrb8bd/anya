@@ -1,13 +1,10 @@
 import os
 import re
-import random
 
 import aiofiles
 import aiohttp
-
-from PIL import Image, ImageDraw, ImageEnhance
-from PIL import ImageFilter, ImageFont, ImageOps
-
+import numpy as np
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont
 from unidecode import unidecode
 from youtubesearchpython.__future__ import VideosSearch
 
@@ -23,6 +20,16 @@ def changeImageSize(maxWidth, maxHeight, image):
     newImage = image.resize((newWidth, newHeight))
     return newImage
 
+def circle(img): 
+     h,w=img.size 
+     a = Image.new('L', [h,w], 0) 
+     b = ImageDraw.Draw(a) 
+     b.pieslice([(0, 0), (h,w)], 0, 360, fill = 255,outline = "white") 
+     c = np.array(img) 
+     d = np.array(a) 
+     e = np.dstack((c, d)) 
+     return Image.fromarray(e)
+
 
 def clear(text):
     list = text.split(" ")
@@ -33,9 +40,9 @@ def clear(text):
     return title.strip()
 
 
-async def get_thumb(videoid):
-    if os.path.isfile(f"cache/{videoid}.png"):
-        return f"cache/{videoid}.png"
+async def get_thumb(videoid,user_id):
+    if os.path.isfile(f"cache/{videoid}_{user_id}.png"):
+        return f"cache/{videoid}_{user_id}.png"
 
     url = f"https://www.youtube.com/watch?v={videoid}"
     try:
@@ -67,70 +74,22 @@ async def get_thumb(videoid):
                     f = await aiofiles.open(f"cache/thumb{videoid}.png", mode="wb")
                     await f.write(await resp.read())
                     await f.close()
+        try:
+            async for photo in app.get_chat_photos(user_id,1):
+                sp=await app.download_media(photo.file_id, file_name=f'{user_id}.jpg')
+        except:
+            async for photo in app.get_chat_photos(app.id,1):
+                sp=await app.download_media(photo.file_id, file_name=f'{app.id}.jpg')
 
-        
-        colors = ["white", "red", "orange", "yellow", "green", "cyan", "azure", "blue", "violet", "magenta", "pink"]
-        border = random.choice(colors)
+        xp=Image.open(sp)
+
         youtube = Image.open(f"cache/thumb{videoid}.png")
-        image1 = changeImageSize(1280, 720, youtube)
-        bg_bright = ImageEnhance.Brightness(image1)
-        bg_logo = bg_bright.enhance(1.1)
-        bg_contra = ImageEnhance.Contrast(bg_logo)
-        bg_logo = bg_contra.enhance(1.1)
-        logox = ImageOps.expand(bg_logo, border=7, fill=f"{border}")
-        background = changeImageSize(1280, 720, logox)
-        # image2 = image1.convert("RGBA")
-        # background = image2.filter(filter=ImageFilter.BoxBlur(1))
-        #enhancer = ImageEnhance.Brightness(background)
-        #background = enhancer.enhance(0.9)
-        #draw = ImageDraw.Draw(background)
-        #arial = ImageFont.truetype("CW-MUSIC/assets/font2.ttf", 30)
-        #font = ImageFont.truetype("CW-MUSIC/assets/font.ttf", 30)
-        # draw.text((1110, 8), unidecode(app.name), fill="white", font=arial)
-        """
-        draw.text(
-            (1, 1),
-            f"{channel} | {views[:23]}",
-            (1, 1, 1),
-            font=arial,
-        )
-        draw.text(
-            (1, 1),
-            clear(title),
-            (1, 1, 1),
-            font=font,
-        )
-        draw.line(
-            [(1, 1), (1, 1)],
-            fill="white",
-            width=1,
-            joint="curve",
-        )
-        draw.ellipse(
-            [(1, 1), (2, 1)],
-            outline="white",
-            fill="white",
-            width=1,
-        )
-        draw.text(
-            (1, 1),
-            "00:00",
-            (1, 1, 1),
-            font=arial,
-        )
-        draw.text(
-            (1, 1),
-            f"{duration[:23]}",
-            (1, 1, 1),
-            font=arial,
-        )
-        """
+    
         try:
             os.remove(f"cache/thumb{videoid}.png")
         except:
             pass
-        background.save(f"cache/{videoid}.png")
-        return f"cache/{videoid}.png"
-    except Exception as e:
-        print(e)
+        background.save(f"cache/{videoid}_{user_id}.png")
+        return f"cache/{videoid}_{user_id}.png"
+    except Exception:
         return YOUTUBE_IMG_URL
